@@ -17,10 +17,19 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
   private gameCanvas: HTMLDivElement;
   private pixiCircle : Pixi.Graphics;
 
+  private ctx: CanvasRenderingContext2D;
+  private texture: Pixi.Texture;
+
   constructor(props : IMainProps) {
     super(props);
   }
   
+  public refresh()
+  {
+    renderTile(this.ctx, 0xFF00FFFF, 0xFFFF00FF, Array(64).fill(false).map((v, i) => Math.random() > 0.5));
+    this.texture.update();
+  }
+
   /**
    * After mounting, add the Pixi Renderer to the div and start the Application.
    */
@@ -35,19 +44,18 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
     this.pixiCircle.endFill(); 
     this.app.stage.addChild(this.pixiCircle);
 
-    const canvas = document.createElement('canvas');
-    canvas.width = 8;
-    canvas.height = 8;
+    const tileCanvas = document.createElement('canvas');
+    tileCanvas.width = 8;
+    tileCanvas.height = 8;
 
-    const ctx = canvas.getContext("2d")!;
-    renderTile(ctx, 0xFF00FFFF, 0xFFFF00FF, Array(64).fill(false).map((v, i) => Math.random() > 0.5));
+    this.ctx = tileCanvas.getContext("2d")!;
 
-    const texture = PIXI.Texture.fromCanvas(canvas);
-    texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
-    const sprite = new PIXI.Sprite(texture);
-    sprite.texture.update();
-
+    this.texture = PIXI.Texture.fromCanvas(tileCanvas);
+    this.texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+    const sprite = new PIXI.Sprite(this.texture);
     this.app.stage.addChild(sprite);
+    
+    this.refresh();
 
     this.app.ticker.add(delta => 
     {
