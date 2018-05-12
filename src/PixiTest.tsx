@@ -3,6 +3,7 @@ import * as Pixi from 'pixi.js';
 
 import { App } from "./App";
 import { renderTile } from "./Rendering";
+import { parseBitsy } from "./Bitsy";
 
 interface IMainProps {
   app : App
@@ -26,7 +27,14 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
   
   public refresh()
   {
-    renderTile(this.ctx, 0xFF00FFFF, 0xFFFF00FF, Array(64).fill(false).map((v, i) => Math.random() > 0.5));
+    const bitsy = document.getElementById("gamedata")!.innerText;
+    const world = parseBitsy(bitsy.split("\n"));
+
+    const keys = Object.keys(world.tiles);
+    const index = Math.floor(Math.random() * keys.length);
+    const key = keys[index];
+
+    renderTile(this.ctx, 0xFF00FFFF, 0xFFFF00FF, world.tiles[key].graphic[0]);
     this.texture.update();
   }
 

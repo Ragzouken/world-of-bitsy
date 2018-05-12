@@ -1,22 +1,20 @@
-import * as fs from 'fs';
-
-class BitsyWorld
+export class BitsyWorld
 {
     public palettes: {[index:string]: BitsyPalette} = {};
     public tiles: {[index:string]: BitsyTile} = {};
 }
 
-class BitsyTile
+export class BitsyTile
 {
     public id: string;
     public name: string;
     public graphic: BitsyGraphic;
 }
 
-type BitsyGraphicFrame = boolean[];
-type BitsyGraphic = BitsyGraphicFrame[];
+export type BitsyGraphicFrame = boolean[];
+export type BitsyGraphic = BitsyGraphicFrame[];
 
-class BitsyPalette
+export class BitsyPalette
 {
     public id: string;
     public name: string;
@@ -32,10 +30,7 @@ class BitsyPalette
     public get sprite(): number { return this.colors[2]; }
 }
 
-const data = fs.readFileSync("tools/955B75C9.bitsy.txt", "UTF-8");
-const lines = data.split("\r\n");
-
-function parseBitsy(lines: string[]) : BitsyWorld
+export function parseBitsy(lines: string[]) : BitsyWorld
 {
     let lineCounter = 0;
 
@@ -53,12 +48,12 @@ function parseBitsy(lines: string[]) : BitsyWorld
 
     function checkBlank()
     {
-        return done() || lines[lineCounter].length == 0;
+        return done() || lines[lineCounter].trim().length == 0;
     }
 
     function skipLine()
     {
-        takeLine();
+        console.log("SKIP " + takeLine());
     }
 
     function takeLine(): string
@@ -171,5 +166,3 @@ function parseBitsy(lines: string[]) : BitsyWorld
 
     return world;
 }
-
-console.log(parseBitsy(lines));
