@@ -1,5 +1,21 @@
 import * as fs from 'fs';
 
+class BitsyWorld
+{
+    public palettes: {[index:string]: BitsyPalette} = {};
+    public tiles: {[index:string]: BitsyTile} = {};
+}
+
+class BitsyTile
+{
+    public id: string;
+    public name: string;
+    public graphic: BitsyGraphic;
+}
+
+type BitsyGraphicFrame = boolean[];
+type BitsyGraphic = BitsyGraphicFrame[];
+
 class BitsyPalette
 {
     public id: string;
@@ -19,11 +35,11 @@ class BitsyPalette
 const data = fs.readFileSync("tools/955B75C9.bitsy.txt", "UTF-8");
 const lines = data.split("\r\n");
 
-function parseBitsy(lines: string[])
+function parseBitsy(lines: string[]) : BitsyWorld
 {
     let lineCounter = 0;
 
-    const palettes = {}
+    const world = new BitsyWorld();
 
     function done(): boolean
     {
@@ -77,28 +93,71 @@ function parseBitsy(lines: string[])
              | 255;
     }
 
+    function tryTakeName(object: {"name": string})
+    {
+        object.name = checkLine("NAME") ? takeSplitOnce(" ")[1] : "";
+    }
+
     function takePalette()
     {
         const palette = new BitsyPalette();
         palette.id = takeSplitOnce(" ")[1];
-        palette.name = checkLine("NAME") ? takeSplitOnce(" ")[1] : "";
+        
+        tryTakeName(palette);
 
         while (!checkBlank())
         {
             palette.colors.push(takeColor());
         }
 
-        palettes[palette.id] = palette;
+        world.palettes[palette.id] = palette;
+    }
 
-        console.log(palette);
+    function takeFrame(): BitsyGraphicFrame
+    {
+        const frame: BitsyGraphicFrame = new Array(64).fill(false);
+
+        for (let i = 0; i < 8; ++i)
+        {
+            const line = takeLine();
+
+            for (let j = 0; j < 8; ++j)
+            {
+                frame[i * 8 + j] = line.charAt(j) == "1";
+            }
+        }
+
+        return frame;
+    }
+
+    function takeGraphic(): BitsyGraphic
+    {
+        const graphic: BitsyGraphic = [];
+
+        do
+        {
+            graphic.push(takeFrame());
+        }
+        while (checkLine(">"));
+        
+        return graphic;
+    }
+
+    function takeTile()
+    {
+        const tile = new BitsyTile();
+        tile.id = takeSplitOnce(" ")[1];
+
+        tile.graphic = takeGraphic();
+        tryTakeName(tile);
+
+        world.tiles[tile.id] = tile;
     }
 
     while (!done())
     {
-        if (checkLine("PAL"))
-        {
-            takePalette();
-        }
+             if (checkLine("PAL")) takePalette();
+        else if (checkLine("TIL")) takeTile();
         else
         {
             while (!checkBlank())
@@ -109,6 +168,8 @@ function parseBitsy(lines: string[])
             skipLine();
         }
     }
+
+    return world;
 }
 
-parseBitsy(lines);
+console.log(parseBitsy(lines));

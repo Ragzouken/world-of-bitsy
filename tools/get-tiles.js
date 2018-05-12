@@ -1,6 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var fs = require("fs");
+var BitsyWorld = /** @class */ (function () {
+    function BitsyWorld() {
+        this.palettes = {};
+        this.tiles = {};
+    }
+    return BitsyWorld;
+}());
+var BitsyTile = /** @class */ (function () {
+    function BitsyTile() {
+    }
+    return BitsyTile;
+}());
 var BitsyPalette = /** @class */ (function () {
     function BitsyPalette() {
         this.colors = [];
@@ -26,7 +38,7 @@ var data = fs.readFileSync("tools/955B75C9.bitsy.txt", "UTF-8");
 var lines = data.split("\r\n");
 function parseBitsy(lines) {
     var lineCounter = 0;
-    var palettes = {};
+    var world = new BitsyWorld();
     function done() {
         return lineCounter >= lines.length;
     }
@@ -60,21 +72,47 @@ function parseBitsy(lines) {
             | (parseInt(b) << 8)
             | 255;
     }
+    function tryTakeName(object) {
+        object.name = checkLine("NAME") ? takeSplitOnce(" ")[1] : "";
+    }
     function takePalette() {
         var palette = new BitsyPalette();
         palette.id = takeSplitOnce(" ")[1];
-        palette.name = checkLine("NAME") ? takeSplitOnce(" ")[1] : "";
+        tryTakeName(palette);
         while (!checkBlank()) {
-            console.log(lines[lineCounter]);
             palette.colors.push(takeColor());
         }
-        palettes[palette.id] = palette;
-        console.log(palette);
+        world.palettes[palette.id] = palette;
+    }
+    function takeFrame() {
+        var frame = new Array(64).fill(false);
+        for (var i = 0; i < 8; ++i) {
+            var line = takeLine();
+            for (var j = 0; j < 8; ++j) {
+                frame[i * 8 + j] = line.charAt(j) == "1";
+            }
+        }
+        return frame;
+    }
+    function takeGraphic() {
+        var graphic = [];
+        do {
+            graphic.push(takeFrame());
+        } while (checkLine(">"));
+        return graphic;
+    }
+    function takeTile() {
+        var tile = new BitsyTile();
+        tile.id = takeSplitOnce(" ")[1];
+        tile.graphic = takeGraphic();
+        tryTakeName(tile);
+        world.tiles[tile.id] = tile;
     }
     while (!done()) {
-        if (checkLine("PAL")) {
+        if (checkLine("PAL"))
             takePalette();
-        }
+        else if (checkLine("TIL"))
+            takeTile();
         else {
             while (!checkBlank()) {
                 skipLine();
@@ -82,5 +120,6 @@ function parseBitsy(lines) {
             skipLine();
         }
     }
+    return world;
 }
-parseBitsy(lines);
+console.log(parseBitsy(lines));
