@@ -3,7 +3,7 @@ import './App.css';
 
 import { PixiComponent } from './PixiTest'; 
 
-import logo from './logo.svg';
+//import logo from './logo.svg';
 
 export class App extends React.Component {
   private test: PixiComponent;
@@ -22,10 +22,6 @@ export class App extends React.Component {
 
     return (
       <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h1 className="App-title">Welcome to React</h1>
-        </header>
         <p><button onClick={f}>Test</button></p>
 
         <PixiComponent app={this} ref={r} />
