@@ -1,4 +1,4 @@
-import { Texture, Rectangle, SCALE_MODES } from "pixi.js";
+import { BaseTexture, Texture, Rectangle, SCALE_MODES } from "pixi.js";
 import { BitsyWorld } from "@bitsy/parser";
 
 export function renderTileset(world: BitsyWorld): Texture[]
@@ -9,14 +9,11 @@ export function renderTileset(world: BitsyWorld): Texture[]
 
     const context = canvas.getContext("2d")!;
 
-     // can just straight up create this?
-    const base = Texture.fromCanvas(canvas).baseTexture;
-    base.scaleMode = SCALE_MODES.NEAREST;
-
+    const base = new BaseTexture(canvas, SCALE_MODES.NEAREST);
     const textures: Texture[] = [];
     const ids = Object.keys(world.tiles);
-    const fg = 0xFFFFFFFF;//world.palettes["0"].tile;
-    const bg = 0xFF0000FF;//world.palettes["0"].background;
+    const fg = world.palettes["0"].tile;
+    const bg = world.palettes["0"].background;
 
     for (let i = 0; i < ids.length; ++i)
     {

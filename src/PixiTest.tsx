@@ -20,7 +20,6 @@ const tileset = renderTileset(world);
 export class PixiComponent extends React.Component<IMainProps, IMainState> {
   private app: Pixi.Application;
   private gameCanvas: HTMLDivElement;
-  private pixiCircle : Pixi.Graphics;
 
   private sprite: Pixi.Sprite;
 
@@ -43,29 +42,41 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
     this.gameCanvas.appendChild(this.app.view);
     this.app.start();
 
-    this.pixiCircle = new PIXI.Graphics();
-    this.pixiCircle.lineStyle(2, 0xFF00FF);  // (thickness, color)
-    this.pixiCircle.drawCircle(0, 0, 10);   // (x,y,radius)
-    this.pixiCircle.endFill(); 
-    this.app.stage.addChild(this.pixiCircle);
-
     const test = new PIXI.Texture(tileset[0].baseTexture);
 
     this.sprite = new PIXI.Sprite(test);
+    this.sprite.pivot = new Pixi.Point(128, 128);
     this.app.stage.addChild(this.sprite);
-    
+
     //this.refresh();
+
+    let orig: Pixi.Point | null;
+    let drag: Pixi.Point | null;
+
+    this.app.renderer.plugins.interaction.on("pointerdown", (event: Pixi.interaction.InteractionEvent) => {
+      drag = event.data.getLocalPosition(this.app.stage);
+      orig = new Pixi.Point(this.sprite.x, this.sprite.y);
+    });
+
+    this.app.renderer.plugins.interaction.on("pointerup", (event: Pixi.interaction.InteractionEvent) => {
+      drag = null;
+      orig = null;
+    });
+
+    this.app.renderer.plugins.interaction.on("pointermove", (event: Pixi.interaction.InteractionEvent) => {
+      if (!orig || !drag) return;
+
+      const m = event.data.getLocalPosition(this.app.stage);
+      const dx = m.x - drag.x;
+      const dy = m.y - drag.y;
+
+      this.sprite.x = orig.x + dx;
+      this.sprite.y = orig.y + dy;
+    });
 
     this.app.ticker.add(delta => 
     {
-      this.pixiCircle.x += delta * 1;
-      this.pixiCircle.y += delta * 1;
-      
-      this.sprite.x = 0;
-      this.sprite.y = 0;
       this.sprite.scale = new Pixi.Point(2, 2);
-
-      this.props.app.setState({"hello": this.pixiCircle.x.toString()});
     });
   }
   
