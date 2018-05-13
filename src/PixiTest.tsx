@@ -2,8 +2,8 @@ import * as React from 'react';
 import * as Pixi from 'pixi.js';
 
 import { App } from "./App";
-import { renderTile } from "./Rendering";
-import { parseBitsy } from "./Bitsy";
+import { renderTileset } from "./Rendering";
+import { BitsyParser } from "@bitsy/parser";
 
 interface IMainProps {
   app : App
@@ -13,13 +13,16 @@ interface IMainState {
 
 }
 
+const bitsy = document.getElementById("gamedata")!.innerText;
+const world = BitsyParser.parse(bitsy.split("\n"));
+const tileset = renderTileset(world);
+
 export class PixiComponent extends React.Component<IMainProps, IMainState> {
   private app: Pixi.Application;
   private gameCanvas: HTMLDivElement;
   private pixiCircle : Pixi.Graphics;
 
-  private ctx: CanvasRenderingContext2D;
-  private texture: Pixi.Texture;
+  private sprite: Pixi.Sprite;
 
   constructor(props : IMainProps) {
     super(props);
@@ -27,15 +30,9 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
   
   public refresh()
   {
-    const bitsy = document.getElementById("gamedata")!.innerText;
-    const world = parseBitsy(bitsy.split("\n"));
-
     const keys = Object.keys(world.tiles);
     const index = Math.floor(Math.random() * keys.length);
-    const key = keys[index];
-
-    renderTile(this.ctx, 0xFF00FFFF, 0xFFFF00FF, world.tiles[key].graphic[0]);
-    this.texture.update();
+    this.sprite.texture = tileset[index];
   }
 
   /**
@@ -52,27 +49,21 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
     this.pixiCircle.endFill(); 
     this.app.stage.addChild(this.pixiCircle);
 
-    const tileCanvas = document.createElement('canvas');
-    tileCanvas.width = 8;
-    tileCanvas.height = 8;
+    const test = new PIXI.Texture(tileset[0].baseTexture);
 
-    this.ctx = tileCanvas.getContext("2d")!;
-
-    this.texture = PIXI.Texture.fromCanvas(tileCanvas);
-    this.texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
-    const sprite = new PIXI.Sprite(this.texture);
-    this.app.stage.addChild(sprite);
+    this.sprite = new PIXI.Sprite(test);
+    this.app.stage.addChild(this.sprite);
     
-    this.refresh();
+    //this.refresh();
 
     this.app.ticker.add(delta => 
     {
       this.pixiCircle.x += delta * 1;
       this.pixiCircle.y += delta * 1;
       
-      sprite.x = 150;
-      sprite.y = 150;
-      sprite.scale = new Pixi.Point(8, 8);
+      this.sprite.x = 0;
+      this.sprite.y = 0;
+      this.sprite.scale = new Pixi.Point(2, 2);
 
       this.props.app.setState({"hello": this.pixiCircle.x.toString()});
     });
