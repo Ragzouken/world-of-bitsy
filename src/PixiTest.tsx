@@ -53,17 +53,24 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
     let orig: Pixi.Point | null;
     let drag: Pixi.Point | null;
 
-    this.app.renderer.plugins.interaction.on("pointerdown", (event: Pixi.interaction.InteractionEvent) => {
+    this.app.stage.interactive = true;
+
+    this.app.stage.on("pointerdown", (event: Pixi.interaction.InteractionEvent) => {
       drag = event.data.getLocalPosition(this.app.stage);
       orig = new Pixi.Point(this.sprite.x, this.sprite.y);
     });
 
-    this.app.renderer.plugins.interaction.on("pointerup", (event: Pixi.interaction.InteractionEvent) => {
+    const resetDrag = () => 
+    {
       drag = null;
       orig = null;
-    });
+    };
 
-    this.app.renderer.plugins.interaction.on("pointermove", (event: Pixi.interaction.InteractionEvent) => {
+    this.app.stage.on("pointerup", (event: Pixi.interaction.InteractionEvent) => resetDrag());
+    document.onpointerup = () => resetDrag();
+    window.onblur = () => resetDrag();
+
+    this.app.stage.on("pointermove", (event: Pixi.interaction.InteractionEvent) => {
       if (!orig || !drag) return;
 
       const m = event.data.getLocalPosition(this.app.stage);
