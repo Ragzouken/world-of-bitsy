@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as Pixi from 'pixi.js';
 
 import { App } from "./App";
-import { renderTileset, MTexture } from "./Rendering";
+import { queueTileset, MTexture, renderQueuedTile } from "./Rendering";
 import { BitsyParser, BitsyWorld } from "@bitsy/parser";
 
 const parsecsv: (csv: string) => string[][] = require("csv-parse/lib/sync");
@@ -51,7 +51,7 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
     loadText(url, text =>
     {
       this.world = BitsyParser.parse(text.split("\n"));
-      offset = renderTileset(this.world, mtex, offset);
+      queueTileset(this.world);
     });
   }
 
@@ -162,6 +162,8 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
         timer -= 15;
         this.loadTexture();
       }
+
+      offset = renderQueuedTile(mtex, offset);
 
       resize();
     });

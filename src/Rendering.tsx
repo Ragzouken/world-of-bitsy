@@ -64,13 +64,39 @@ export function renderTile(mtex: MTexture,
     mtex.context.putImageData(data, tx * 8, ty * 8);
 }
 
-export function renderTileset(world: BitsyWorld, mtex: MTexture | null = null, offset: number): number
-{
-    if (!mtex) 
-    {
-        mtex = new MTexture(512, 512);
-    }
+let queue: [BitsyPalette, BitsyTile][] = [];
+export { queue };
 
+export function queueTileset(world: BitsyWorld): void
+{
+    const ids = Object.keys(world.tiles);
+    const palette = findPalette(world);
+
+    if (palette)
+    {
+        for (let i = 0; i < ids.length; ++i)
+        {
+            const tile = world.tiles[ids[i]];
+
+            queue.push([palette, tile]);
+        }
+    }
+}
+
+export function renderQueuedTile(mtex: MTexture, offset: number): number
+{
+    if (queue.length == 0) return offset;
+
+    const item = queue.shift()!;
+
+    renderTile(mtex, offset, item[1], item[0]);
+    mtex.base.update();
+
+    return offset + 1;
+}
+
+export function renderTileset(world: BitsyWorld, mtex: MTexture, offset: number): number
+{
     const ids = Object.keys(world.tiles);
     const palette = findPalette(world);
 
