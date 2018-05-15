@@ -92,7 +92,7 @@ export function renderQueuedTile(mtex: MTexture, offset: number): number
     renderTile(mtex, offset, item[1], item[0]);
     mtex.base.update();
 
-    return offset + 1;
+    return (offset + 1) % 4096;
 }
 
 export function renderTileset(world: BitsyWorld, mtex: MTexture, offset: number): number
