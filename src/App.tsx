@@ -17,12 +17,13 @@ export class App extends React.Component {
   }
 
   public render() {
-    const f = () => this.test.refresh();
+    //const f = () => this.test.refresh();
     const r = (c: PixiComponent) => this.test = c; 
 
     return (
       <div className="App">
-        <p><button onClick={f}>Test</button></p>
+        {//<p><button onClick={f}>Test</button></p>
+        }
 
         <PixiComponent app={this} ref={r} />
       </div>
