@@ -3,6 +3,9 @@ import { BitsyWorld, BitsyPalette, BitsyTile } from "@bitsy/parser";
 
 import { d2xy } from "./hilbert";
 
+const coord2boid: {[index:string]: string} = {};
+export { coord2boid };
+
 export class MTexture
 {
     public base: BaseTexture;
@@ -40,11 +43,14 @@ function findPalette(world: BitsyWorld): BitsyPalette | null
 export function renderTile(mtex: MTexture, 
                            index: number, 
                            tile: BitsyTile,
-                           palette: BitsyPalette): void
+                           palette: BitsyPalette,
+                           boid: string): void
 {
     const h = d2xy(index);
     const tx = h.x;
     const ty = h.y;
+
+    coord2boid[`${tx},${ty}`] = boid;
 
     const data = mtex.context.getImageData(tx * 8, ty * 8, 8, 8);
     const buf = new ArrayBuffer(data.data.length);
@@ -64,10 +70,10 @@ export function renderTile(mtex: MTexture,
     mtex.context.putImageData(data, tx * 8, ty * 8);
 }
 
-let queue: [BitsyPalette, BitsyTile][] = [];
+let queue: [BitsyPalette, BitsyTile, string][] = [];
 export { queue };
 
-export function queueTileset(world: BitsyWorld): void
+export function queueTileset(world: BitsyWorld, boid: string): void
 {
     const ids = Object.keys(world.tiles);
     const palette = findPalette(world);
@@ -78,7 +84,7 @@ export function queueTileset(world: BitsyWorld): void
         {
             const tile = world.tiles[ids[i]];
 
-            queue.push([palette, tile]);
+            queue.push([palette, tile, boid]);
         }
     }
 }
@@ -89,13 +95,13 @@ export function renderQueuedTile(mtex: MTexture, offset: number): number
 
     const item = queue.shift()!;
 
-    renderTile(mtex, offset, item[1], item[0]);
+    renderTile(mtex, offset, item[1], item[0], item[2]);
     mtex.base.update();
 
     return (offset + 1) % 4096;
 }
 
-export function renderTileset(world: BitsyWorld, mtex: MTexture, offset: number): number
+export function renderTileset(world: BitsyWorld, mtex: MTexture, offset: number, boid: string): number
 {
     const ids = Object.keys(world.tiles);
     const palette = findPalette(world);
@@ -108,7 +114,7 @@ export function renderTileset(world: BitsyWorld, mtex: MTexture, offset: number)
 
             offset = (offset + 1) % 4096;
 
-            renderTile(mtex, offset, tile, palette);
+            renderTile(mtex, offset, tile, palette, boid);
         }
     }
 

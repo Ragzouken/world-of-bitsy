@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as Pixi from 'pixi.js';
 
 import { App } from "./App";
-import { queueTileset, MTexture, renderQueuedTile } from "./Rendering";
+import { queueTileset, MTexture, renderQueuedTile, queue, coord2boid } from "./Rendering";
 import { BitsyParser, BitsyWorld } from "@bitsy/parser";
 
 const parsecsv: (csv: string) => string[][] = require("csv-parse/lib/sync");
@@ -31,6 +31,12 @@ interface IMainState {
 
 }
 
+function norm(coord: number): number
+{
+  const n = 64;
+  return ((coord % n) + n) % n;
+}
+
 export class PixiComponent extends React.Component<IMainProps, IMainState> {
   private app: Pixi.Application;
   private gameCanvas: HTMLDivElement;
@@ -39,32 +45,41 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
   private world: BitsyWorld;
 
   private index: string[][] | null;
+  private missing: {[index:string]: boolean};
 
   constructor(props : IMainProps) {
     super(props);
   }
   
-  private addTileset(boid: string): void
+  private addTileset(boid: string, log: string): void
   {
     const url = `https://raw.githubusercontent.com/Ragzouken/bitsy-archive/master/${boid}.bitsy.txt`
 
     loadText(url, text =>
     {
       this.world = BitsyParser.parse(text.split("\n"));
-      queueTileset(this.world);
+      queueTileset(this.world, log);
+      //console.log(log);
+      log = log + boid;
     });
   }
 
   private loopIndex: number = 1;
 
-  private loadTexture(): void
+  private loadTexture(): boolean
   {
-    if (!this.index || this.loopIndex >= this.index.length) return;
-
-    const boid = this.index[this.loopIndex][0];
-    this.loopIndex = this.loopIndex + 1;
+    if (!this.index || !this.missing) return false;
+    if (this.index && this.loopIndex >= this.index.length) return true;
     
-    this.addTileset(boid);
+    const entry = this.index[this.loopIndex];
+    const boid = entry[0];
+    this.loopIndex = this.loopIndex + 1;
+
+    if (entry[3].trim() in this.missing) return false;
+
+    this.addTileset(boid, `${entry[2]} by ${entry[3]}`);
+
+    return true;
   }
 
   public refresh()
@@ -92,12 +107,34 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
     let drag: Pixi.Point | null;
 
     loadText("https://raw.githubusercontent.com/Ragzouken/bitsy-archive/master/index.txt", text => this.index = parsecsv(text));
+    loadText("https://raw.githubusercontent.com/Ragzouken/bitsy-archive/master/missing.txt", text => 
+    {
+      let lines = text.split("\n");
+      this.missing = {};
+
+      for (let line of lines)
+      {
+        const i = line.indexOf(",");
+        const author = line.slice(i + 1).trim();
+        this.missing[author] = true;
+      }
+    });
 
     this.app.stage.interactive = true;
 
     this.app.stage.on("pointerdown", (event: Pixi.interaction.InteractionEvent) => {
       drag = event.data.getLocalPosition(this.app.stage);
       orig = new Pixi.Point(this.sprite.tilePosition.x, this.sprite.tilePosition.y);
+
+      const coord = event.data.getLocalPosition(this.sprite);
+
+      coord.x -= this.sprite.tilePosition.x;
+      coord.y -= this.sprite.tilePosition.y;
+
+      const x = norm(Math.floor(coord.x / 8));
+      const y = norm(Math.floor(coord.y / 8));
+
+      console.log(coord2boid[`${x},${y}`]);
     });
 
     const resetDrag = () => 
@@ -157,10 +194,12 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
 
       timer += delta;
 
-      if (timer >= 15)
+      if (timer >= 15 && queue.length < 64)
       {
-        timer -= 15;
-        this.loadTexture();
+        if (this.index && this.missing && this.loadTexture())
+        {
+          timer -= 15;
+        }
       }
 
       offset = renderQueuedTile(mtex, offset);
