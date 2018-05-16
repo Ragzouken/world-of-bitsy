@@ -91,7 +91,7 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
     let orig: Pixi.Point | null;
     let drag: Pixi.Point | null;
 
-    loadText("https://docs.google.com/spreadsheets/d/1eBUgCYOnMJ9REHuZdTodc6Ft2Vs6JXbH4K-bIgL9TPc/gviz/tq?tqx=out:csv&sheet=Bitsy", text => this.index = parsecsv(text));
+    loadText("https://raw.githubusercontent.com/Ragzouken/bitsy-archive/master/index.txt", text => this.index = parsecsv(text));
 
     this.app.stage.interactive = true;
 
