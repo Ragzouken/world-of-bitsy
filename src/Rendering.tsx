@@ -10,15 +10,16 @@ export class MTexture
 {
     public base: BaseTexture;
     public context: CanvasRenderingContext2D;
+    public canvas: HTMLCanvasElement;
 
     public constructor(width: number, height: number)
     {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = width;
+        this.canvas.height = height;
     
-        this.context = canvas.getContext("2d")!;
-        this.base = new BaseTexture(canvas, SCALE_MODES.NEAREST);
+        this.context = this.canvas.getContext("2d")!;
+        this.base = new BaseTexture(this.canvas, SCALE_MODES.NEAREST);
     }
 }
 

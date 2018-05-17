@@ -6,8 +6,57 @@ import { queueTileset, MTexture, renderQueuedTile, queue, coord2boid } from "./R
 import { BitsyParser, BitsyWorld } from "@bitsy/parser";
 
 const parsecsv: (csv: string) => string[][] = require("csv-parse/lib/sync");
-const mtex = new MTexture(512, 512);
 let offset: number = 0;
+
+let textureIndex = 0;
+const textures = [
+  new MTexture(  8,   8),
+  new MTexture( 16,  16),
+  new MTexture( 32,  32),
+  new MTexture( 64,  64),
+  new MTexture(128, 128),
+  new MTexture(256, 256),
+  new MTexture(512, 512)
+];
+
+let mtex = textures[textureIndex];// new MTexture(512, 512);
+
+const sizes = [
+  1,
+  2,
+  4,
+  8,
+  16,
+  32,
+  64
+]
+
+const offsets = [
+  1,
+  4,
+  16,
+  64,
+  256,
+  1024,
+  -1
+];
+
+function elevate(): MTexture
+{
+  const prev = textures[textureIndex];
+  textureIndex += 1;
+  const next = textures[textureIndex];
+
+  const w = prev.canvas.width;
+  const h = prev.canvas.height;
+
+  next.context.drawImage(prev.canvas, 0, 0);
+  next.context.drawImage(prev.canvas, w, 0);
+  next.context.drawImage(prev.canvas, 0, h);
+  next.context.drawImage(prev.canvas, w, h);
+
+  return next;
+}
 
 function loadText(url: string, callback: (text: string) => void): void
 {
@@ -33,7 +82,8 @@ interface IMainState {
 
 function norm(coord: number): number
 {
-  const n = 64;
+  const n = sizes[textureIndex];
+
   return ((coord % n) + n) % n;
 }
 
@@ -44,7 +94,7 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
   private sprite: PIXI.extras.TilingSprite;
   private world: BitsyWorld;
 
-  private index: string[][] | null;
+  private index?: string[][];
   private missing: {[index:string]: boolean};
 
   constructor(props : IMainProps) {
@@ -187,12 +237,14 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
     }
 
     let timer = 0;
+    let timer2 = 0;
 
     this.app.ticker.add(delta => 
     {
       //this.sprite.scale = new Pixi.Point(2, 2);
 
       timer += delta;
+      timer2 += delta;
 
       if (timer >= 15 && queue.length < 64)
       {
@@ -202,7 +254,26 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
         }
       }
 
-      offset = renderQueuedTile(mtex, offset);
+      if (timer2 > 1)
+      {
+        timer2 -= 1;
+
+        if (offset == offsets[textureIndex])
+        {
+          mtex = elevate();
+          
+          this.app.stage.removeChild(this.sprite);
+
+          const prev = this.sprite;
+          const test = new PIXI.Texture(mtex.base);
+          this.sprite = new PIXI.extras.TilingSprite(test, this.app.renderer.width, this.app.renderer.height);
+          this.sprite.scale = new Pixi.Point(2, 2);
+          this.sprite.tilePosition = prev.tilePosition;
+          this.app.stage.addChild(this.sprite);
+        }
+
+        offset = renderQueuedTile(mtex, offset);
+      }
 
       resize();
     });
