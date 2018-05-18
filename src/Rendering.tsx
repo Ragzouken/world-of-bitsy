@@ -85,12 +85,18 @@ export function renderObject(mtex: MTexture,
 let queue: [BitsyPalette, BitsyObject, string[]][] = [];
 export { queue };
 
-export function queueGraphics(world: BitsyWorld, entry: string[]): void
+export function queueGraphics(world: 
+                              BitsyWorld, 
+                              entry: string[],
+                              tiles: boolean = true,
+                              sprites: boolean = true,
+                              items: boolean = true): void
 {
     const palette = findPalette(world);
 
     if (palette)
     {
+        if (tiles)
         {
             const ids = Object.keys(world.tiles);
             for (let i = 0; i < ids.length; ++i)
@@ -101,6 +107,7 @@ export function queueGraphics(world: BitsyWorld, entry: string[]): void
             }
         }
 
+        if (sprites)
         {
             const ids = Object.keys(world.sprites);
             for (let i = 0; i < ids.length; ++i)
@@ -111,6 +118,7 @@ export function queueGraphics(world: BitsyWorld, entry: string[]): void
             }
         }
 
+        if (items)
         {
             const ids = Object.keys(world.items);
             for (let i = 0; i < ids.length; ++i)

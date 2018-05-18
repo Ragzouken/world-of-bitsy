@@ -4,6 +4,16 @@ import * as Pixi from 'pixi.js';
 import { App } from "./App";
 import { queueGraphics, MTexture, renderQueuedTile, queue, coord2boid } from "./Rendering";
 import { BitsyParser, BitsyWorld } from "@bitsy/parser";
+import * as query from "query-string";
+
+const config = query.parseUrl(location.search);
+console.log(config);
+
+const animate = config.query["animate"] != "false";
+const q_tiles = config.query["tiles"] != "false";
+const q_sprites = config.query["sprites"] != "false";
+const q_items = config.query["items"] != "false";
+const shuffle = config.query["shuffle"] = "true";
 
 const parsecsv: (csv: string) => string[][] = require("csv-parse/lib/sync");
 let offset: number = 0;
@@ -123,21 +133,38 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
     loadText(url, text =>
     {
       this.world = BitsyParser.parse(text.split("\n"));
-      queueGraphics(this.world, entry);
+      queueGraphics(this.world, entry, q_tiles, q_sprites, q_items);
     });
   }
 
   private loopIndex: number = 1;
+  private tried: {[index:string]: boolean} = {};
 
   private loadTexture(): boolean
   {
     if (!this.index || !this.missing) return false;
     if (this.index && this.loopIndex >= this.index.length) return true;
-    
-    const entry = this.index[this.loopIndex];
-    const boid = entry[0];
-    this.loopIndex = this.loopIndex + 1;
 
+    let entry: string[];
+    let boid: string = "";
+
+    if (shuffle)
+    {
+      do
+      {
+        entry = this.index[Math.floor(Math.random() * (this.index.length - 1)) + 1];
+        boid = entry[0];
+      }
+      while (this.tried[boid]);
+    }
+    else
+    {
+      entry = this.index[this.loopIndex];
+      boid = entry[0];
+      this.loopIndex = this.loopIndex + 1;
+    }
+    
+    this.tried[boid] = true;
     if (entry[3].trim() in this.missing) return false;
 
     this.addTileset(boid, entry);
@@ -329,7 +356,7 @@ export class PixiComponent extends React.Component<IMainProps, IMainState> {
       timer2 += delta;
       timer3 += (delta / 60);
 
-      if (timer3 >= .4)
+      if (timer3 >= .4 && animate)
       {
         timer3 -= .4;
         frame = 1 - frame;
