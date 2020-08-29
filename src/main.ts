@@ -124,7 +124,7 @@ async function load() {
     }
 
     const queueLimit = 64;
-    const queueInterval = 200;
+    const queueInterval = 100;
     let nextQueueTime = performance.now();
 
     const renderInterval = 20;
@@ -162,16 +162,13 @@ async function load() {
             frame = 1 - frame;
         }
 
-        //const pattern = 
-        //.clearRect(0, 0, rendererContext.canvas.width, rendererContext.canvas.height);
-        //rendererContext.drawImage(textures[textureIndex][frame].canvas, 0, 0); 
         rendererContext.imageSmoothingEnabled = false;
         rendererContext.save();
         rendererContext.fillStyle = rendererContext.createPattern(textures[textureIndex][frame].canvas, "repeat")!;
         rendererContext.beginPath();
         rendererContext.rect(0, 0, rendererContext.canvas.width, rendererContext.canvas.height);
         rendererContext.closePath();
-        rendererContext.translate(0, Math.floor(performance.now() / 50.));
+        rendererContext.translate(-rendererContext.canvas.width/2, Math.floor(performance.now() / 50.));
         rendererContext.scale(4, 4);
         rendererContext.fill();
         rendererContext.restore();
