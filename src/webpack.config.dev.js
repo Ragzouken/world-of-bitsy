@@ -1,0 +1,40 @@
+const path = require('path');
+const webpack = require('webpack');
+
+module.exports = {
+  watch: true,
+  mode: 'development',
+  devtool: "inline-source-map",
+  entry: './src/main.ts',
+  output: {
+    filename: 'script.js',
+    path: path.resolve(__dirname, '../public'),
+    library: 'wob',
+    libraryTarget: 'window',
+  },
+  module: {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        use: [
+            {
+                loader: 'ts-loader',
+                options: {
+                    transpileOnly: true,
+                },
+            }
+        ],
+        exclude: /node_modules/,
+      },
+    ],
+  },
+  resolve: {
+    extensions: [ '.tsx', '.ts', '.js' ],
+  },
+  plugins: [
+    new webpack.WatchIgnorePlugin([
+      /\.js$/,
+      /\.d\.ts$/
+    ])
+  ],
+};
