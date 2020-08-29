@@ -1,6 +1,6 @@
 import { BitsyParser, BitsyWorld, BitsyPalette, BitsyObject } from "@bitsy/parser";
 import * as csvparse from 'csv-parse';
-import { withPixels } from "./utility";
+import { withPixels, randomInt } from "./utility";
 import { d2xy } from "./hilbert";
 
 async function parsecsv(text: string): Promise<string[][]> {
@@ -61,12 +61,15 @@ async function load() {
         try {
             const world = await fetchWorld(boid);
             rendering.queueBitsy(world, csvRow);
-        } catch (e) {}
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 
     const shuffle = false;
 
-    const fetchQueue: string[][] = [];
+    let fetchQueue: string[][] = [];
     const tried = new Set<string>();
 
     async function loadNext() {
@@ -121,13 +124,13 @@ async function load() {
     }
 
     const queueLimit = 64;
-    const queueInterval = 500;
+    const queueInterval = 200;
     let nextQueueTime = performance.now();
 
-    const renderInterval = 100;
+    const renderInterval = 20;
     let nextRenderTime = performance.now();
 
-    const frameInterval = 200;
+    const frameInterval = 400;
     let nextFrameTime = performance.now();
 
     let offset = 0;
@@ -162,12 +165,14 @@ async function load() {
         //const pattern = 
         //.clearRect(0, 0, rendererContext.canvas.width, rendererContext.canvas.height);
         //rendererContext.drawImage(textures[textureIndex][frame].canvas, 0, 0); 
+        rendererContext.imageSmoothingEnabled = false;
         rendererContext.save();
         rendererContext.fillStyle = rendererContext.createPattern(textures[textureIndex][frame].canvas, "repeat")!;
         rendererContext.beginPath();
         rendererContext.rect(0, 0, rendererContext.canvas.width, rendererContext.canvas.height);
         rendererContext.closePath();
         rendererContext.translate(0, Math.floor(performance.now() / 50.));
+        rendererContext.scale(4, 4);
         rendererContext.fill();
         rendererContext.restore();
     }
@@ -175,7 +180,8 @@ async function load() {
     await Promise.all([indexGetting, missingGetting]);
 
     index.shift(); // remove header row
-    Array.from(index).forEach((csvRow) => fetchQueue.push(csvRow));
+    Array.from(index).forEach((csvRow) => fetchQueue.push(csvRow))
+    fetchQueue = shuffled(fetchQueue);
     
     loop();
 }
@@ -252,6 +258,14 @@ sizes.forEach((size) => {
 
 const tileContext = createContext2d(8, 8);
 const coord2csvRow = new Map<string, string[]>();
+
+function shuffled<T>(array: T[]): T[] {
+    const result: T[] = [];
+    while (array.length > 0) {
+        result.push(...array.splice(randomInt(0, array.length), 1));
+    }
+    return result;
+}
 
 function correct(color: number) {
     const hex = ((color | 0xFF000000) >>> 0).toString(16);

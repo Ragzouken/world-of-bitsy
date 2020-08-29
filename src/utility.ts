@@ -27,6 +27,8 @@ export function hslToRgb(h: number, s: number, l: number) {
     return [r * 255, g * 255, b * 255];
 }
 
+export const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
 export function withPixels(context: CanvasRenderingContext2D, action: (pixels: Uint32Array) => void) {
     const image = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
     action(new Uint32Array(image.data.buffer));
