@@ -162,16 +162,15 @@ async function load() {
             frame = 1 - frame;
         }
 
+        const matrix = new DOMMatrix();
+        matrix.translateSelf(-rendererContext.canvas.width/2, Math.floor(performance.now() / 50.));
+        matrix.scaleSelf(4, 4);
+        const pattern = rendererContext.createPattern(textures[textureIndex][frame].canvas, "repeat")!;
+        pattern.setTransform(matrix);
+
         rendererContext.imageSmoothingEnabled = false;
-        rendererContext.save();
-        rendererContext.fillStyle = rendererContext.createPattern(textures[textureIndex][frame].canvas, "repeat")!;
-        rendererContext.beginPath();
-        rendererContext.rect(0, 0, rendererContext.canvas.width, rendererContext.canvas.height);
-        rendererContext.closePath();
-        rendererContext.translate(-rendererContext.canvas.width/2, Math.floor(performance.now() / 50.));
-        rendererContext.scale(4, 4);
-        rendererContext.fill();
-        rendererContext.restore();
+        rendererContext.fillStyle = pattern;
+        rendererContext.fillRect(0, 0, rendererContext.canvas.width, rendererContext.canvas.height);
     }
 
     await Promise.all([indexGetting, missingGetting]);
