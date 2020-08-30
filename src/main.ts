@@ -14,6 +14,15 @@ async function parsecsv(text: string): Promise<string[][]> {
 
 window.addEventListener('load', load);
 
+async function getAvailability() {
+    const res = await fetch("https://api.github.com/repos/ragzouken/bitsy-archive/git/trees/7496468bcefaa8e0055f1dccd26232cc04c2d7c3");
+    const json = await res.json();
+    const tree = json.tree as any[];
+    const names = tree.map((entry) => entry.path as string);
+    const boids = names.filter((name) => name.endsWith('.bitsy.txt')).map((name) => name.slice(0, 8));
+    return new Set(boids);
+}
+
 async function load() {
     const renderer = document.getElementById('renderer') as HTMLCanvasElement;
     const rendererContext = renderer.getContext('2d')!;
@@ -29,26 +38,11 @@ async function load() {
     onResize();
 
     let index: string[][] = [];
-    const missing = new Set<string>();
     
     const indexGetting = fetch("https://raw.githubusercontent.com/Ragzouken/bitsy-archive/main/index.txt")
     .then(res => res.text())
     .then(text => parsecsv(text))
     .then(csv => index = csv);
-
-    const missingGetting = fetch("https://raw.githubusercontent.com/Ragzouken/bitsy-archive/main/missing.txt")
-    .then(res => res.text())
-    .then(text => 
-    {
-        let lines = text.split("\n");
-
-        for (let line of lines)
-        {
-            const i = line.indexOf(",");
-            const author = line.slice(i + 1).trim();
-            missing.add(author);
-        }
-    });
 
     const rendering = new Rendering();
 
@@ -80,9 +74,7 @@ async function load() {
         const boid = csvRow[0];
         tried.add(boid);
 
-        const author = csvRow[3].trim();
-        if (author in missing) return false;
-      
+        const author = csvRow[3].trim();  
         addTileset(boid, csvRow);
       
         return true;
@@ -93,12 +85,15 @@ async function load() {
         frame2: CanvasRenderingContext2D,
         offset: number,
     ): number {
-        const item = rendering.queue.shift();
+        const item = rendering.tiles.shift();
 
         if (!item) return offset;
 
-        renderObject(frame1, offset, item.tile, item.palette, item.csvRow, 0);
-        renderObject(frame2, offset, item.tile, item.palette, item.csvRow, 1);
+        const { x, y } = d2xy(offset);
+        coord2csvRow.set(`${x},${y}`, item.csvRow);
+
+        frame1.drawImage(item.frames[0].canvas, x * 8, y * 8);
+        frame2.drawImage(item.frames[1].canvas, x * 8, y * 8);
 
         return (offset + 1) % 4096;
     }
@@ -139,7 +134,7 @@ async function load() {
     function loop() {
         window.requestAnimationFrame(loop);
 
-        if (performance.now() > nextQueueTime && rendering.queue.length < queueLimit) {
+        if (performance.now() > nextQueueTime && rendering.objects.length < queueLimit) {
             if (loadNext()) nextQueueTime = performance.now() + queueInterval;
         }
 
@@ -171,20 +166,28 @@ async function load() {
         rendererContext.imageSmoothingEnabled = false;
         rendererContext.fillStyle = pattern;
         rendererContext.fillRect(0, 0, rendererContext.canvas.width, rendererContext.canvas.height);
+
+        rendering.renderNextObjectToTile();
     }
 
-    await Promise.all([indexGetting, missingGetting]);
+    const available = await getAvailability();
+    await Promise.all([indexGetting]);
+    index = index.filter((csvRow) => available.has(csvRow[0]));
 
-    index.shift(); // remove header row
     Array.from(index).forEach((csvRow) => fetchQueue.push(csvRow))
     fetchQueue = shuffled(fetchQueue);
     
     loop();
 }
 
-type TileEntry = {
+type ObjectEntry = {
+    object: BitsyObject,
     palette: BitsyPalette,
-    tile: BitsyObject,
+    csvRow: string[],
+}
+
+type TileEntry = {
+    frames: CanvasRenderingContext2D[],
     csvRow: string[],
 }
 
@@ -195,21 +198,30 @@ defaultPalette.colors = [0x0052cc, 0x809fff, 0xffffff];
 export interface RenderingOptions {}
 
 export class Rendering {
-    readonly queue: TileEntry[] = [];
+    readonly objects: ObjectEntry[] = [];
+    readonly tiles: TileEntry[] = [];
 
     constructor(options: Partial<RenderingOptions> = {}) {}
 
     queueBitsy(world: BitsyWorld, csvRow: string[]) {
         const palette = this.findPalette(world);
+        const objects = [world.tiles, world.sprites, world.items].map((record) => Object.values(record));
+        const flat = ([] as BitsyObject[]).concat.apply([], objects);
+        const entries = flat.map((object) => ({ csvRow, palette, object }));
+        this.objects.push(...entries);
+    }
 
-        [world.tiles, world.sprites, world.items].forEach((objects) => {
-            const ids = Object.keys(objects);
+    renderNextObjectToTile() {
+        const entry = this.objects.shift();
+        if (!entry) return;
 
-            ids.forEach((id) => {
-                const tile = objects[id];
-                this.queue.push({ palette, tile, csvRow });
-            });
-        });
+        const { object, csvRow, palette } = entry;
+        const frames = [
+            objectToContext(object, palette, 0), 
+            objectToContext(object, palette, 1),
+        ];
+
+        this.tiles.push({ csvRow, frames });
     }
 
     findPalette(world: BitsyWorld): BitsyPalette
@@ -272,28 +284,16 @@ function correct(color: number) {
     return parseInt("ff" + b + g + r, 16) >>> 0;
 }
 
-function renderObject(
-    context: CanvasRenderingContext2D, 
-    index: number,
-    object: BitsyObject,
-    palette: BitsyPalette,
-    csvRow: string[],
-    frame: number,
-): void {
-    const { x, y } = d2xy(index);
-
-    coord2csvRow.set(`${x},${y}`, csvRow);
-
+function objectToContext(object: BitsyObject, palette: BitsyPalette, frame: number) {
     const graphic = object.graphic[frame % object.graphic.length];
-
     const fg = correct(palette.colors[object.palette]);
     const bg = correct(palette.background);
-
-    withPixels(tileContext, pixels => {
+    
+    const context = createContext2d(8, 8);
+    withPixels(context, pixels => {
         for (let i = 0; i < 64; ++i) {
             pixels[i] = graphic[i] ? fg : bg;
         }
     });
-
-    context.drawImage(tileContext.canvas, x * 8, y * 8);
+    return context;
 }
