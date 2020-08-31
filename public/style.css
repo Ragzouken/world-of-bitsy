@@ -1,0 +1,31 @@
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+
+:root {
+    --bitsy-blue: #0052cc;
+
+    --button-color: #0052cc;
+    --disable-color: #888888;
+    --ascii-small: 'ascii_small_simple', monospace;
+}
+
+canvas, img {
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+
+    font-family: var(--ascii-small);
+    width: 100vw;
+    height: calc(var(--vh, 1vh) * 100);
+}
+
+#renderer {
+    width: 100%; height: 100%;
+}
