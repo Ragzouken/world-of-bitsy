@@ -33,6 +33,7 @@ async function getAvailability() {
 async function load() {
     const renderer = document.getElementById('renderer') as HTMLCanvasElement;
     const rendererContext = renderer.getContext('2d')!;
+    const tooltip = document.getElementById('tooltip')!;
 
     function onResize() {
         const vh = window.innerHeight / 100;
@@ -136,6 +137,11 @@ async function load() {
     let offset = 0;
     let frame = 0;
 
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const scale = 4;
+
     function loop() {
         window.requestAnimationFrame(loop);
 
@@ -162,10 +168,15 @@ async function load() {
             frame = 1 - frame;
         }
 
+        const active = textures[textureIndex][frame].canvas;
+
+        offsetX = Math.floor(rendererContext.canvas.width / 2.);
+        offsetY = Math.floor(performance.now() / 50.) % (active.height * 4);
+
         const matrix = new DOMMatrix();
-        matrix.translateSelf(-rendererContext.canvas.width/2, Math.floor(performance.now() / 50.));
-        matrix.scaleSelf(4, 4);
-        const pattern = rendererContext.createPattern(textures[textureIndex][frame].canvas, "repeat")!;
+        matrix.translateSelf(offsetX, offsetY);
+        matrix.scaleSelf(scale, scale);
+        const pattern = rendererContext.createPattern(active, "repeat")!;
         pattern.setTransform(matrix);
 
         rendererContext.imageSmoothingEnabled = false;
@@ -174,6 +185,29 @@ async function load() {
 
         rendering.renderNextObjectToTile();
     }
+
+    renderer.addEventListener('click', (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+
+        const [cx, cy] = [event.clientX, event.clientY];
+        const [px, py] = [cx - offsetX, cy - offsetY];
+        const gx = Math.floor(px / (8 * scale));
+        const gy = Math.floor(py / (8 * scale));
+
+        for (let i = textureIndex; i >= 0; --i) {
+            const size = sizes[i];
+            const [tx, ty] = [(gx + size * 1000) % size, (gy + size * 1000) % size];
+
+            const csvRow = coord2csvRow.get(`${tx},${ty}`);
+            if (csvRow) {
+                const [title, author, url] = [csvRow[2], csvRow[3], csvRow[4]];
+                tooltip.innerHTML = `<a href="${url}">${title} by ${author}</a>`;
+                console.log('final', tx, ty);
+                break;
+            }
+        }
+    });
 
     const available = await getAvailability();
     await Promise.all([indexGetting]);
