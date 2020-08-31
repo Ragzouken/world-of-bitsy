@@ -1,5 +1,4 @@
 import { BitsyParser, BitsyWorld, BitsyPalette, BitsyObject } from "@bitsy/parser";
-import * as csvparse from 'csv-parse';
 import { withPixels, randomInt } from "./utility";
 import { d2xy } from "./hilbert";
 
@@ -12,12 +11,9 @@ const options = {
 };
 
 async function parsecsv(text: string): Promise<string[][]> {
-    return new Promise((resolve, reject) => {
-        csvparse(text, (error, records) => {
-            if (error) reject(error);
-            else resolve(records);
-        });
-    });
+    const lines = text.split('\n');
+    const entries = lines.map((line) => line.slice(1, -1).split('","'));
+    return entries;
 }
 
 window.addEventListener('load', load);
