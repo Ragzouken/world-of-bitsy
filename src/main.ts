@@ -3,6 +3,13 @@ import * as csvparse from 'csv-parse';
 import { withPixels, randomInt } from "./utility";
 import { d2xy } from "./hilbert";
 
+const url = new URL(window.location.href);
+const options = {
+    size: parseInt(url.searchParams.get("size") || "6", 10),
+    shuffle: url.searchParams.get("shuffle") !== "false",
+    show: new Set((url.searchParams.get("show") || "tiles,sprites,items").split(",")),
+};
+
 async function parsecsv(text: string): Promise<string[][]> {
     return new Promise((resolve, reject) => {
         csvparse(text, (error, records) => {
@@ -61,8 +68,6 @@ async function load() {
         }
     }
 
-    const shuffle = false;
-
     let fetchQueue: string[][] = [];
     const tried = new Set<string>();
 
@@ -95,7 +100,7 @@ async function load() {
         frame1.drawImage(item.frames[0].canvas, x * 8, y * 8);
         frame2.drawImage(item.frames[1].canvas, x * 8, y * 8);
 
-        return (offset + 1) % 4096;
+        return (offset + 1) % offsetLimit;
     }
 
     function grow() {
@@ -175,7 +180,9 @@ async function load() {
     index = index.filter((csvRow) => available.has(csvRow[0]));
 
     Array.from(index).forEach((csvRow) => fetchQueue.push(csvRow))
-    fetchQueue = shuffled(fetchQueue);
+        
+    if (options.shuffle)
+        fetchQueue = shuffled(fetchQueue);
     
     loop();
 }
@@ -205,9 +212,11 @@ export class Rendering {
 
     queueBitsy(world: BitsyWorld, csvRow: string[]) {
         const palette = this.findPalette(world);
-        const objects = [world.tiles, world.sprites, world.items].map((record) => Object.values(record));
-        const flat = ([] as BitsyObject[]).concat.apply([], objects);
-        const entries = flat.map((object) => ({ csvRow, palette, object }));
+        const objects: BitsyObject[] = [];
+        if (options.show.has('tiles')) objects.push(...Object.values(world.tiles));
+        if (options.show.has('sprites')) objects.push(...Object.values(world.sprites));
+        if (options.show.has('items')) objects.push(...Object.values(world.items));
+        const entries = objects.map((object) => ({ csvRow, palette, object }));
         this.objects.push(...entries);
     }
 
@@ -253,9 +262,10 @@ function createContext2d(width: number, height: number) {
 }
 
 let textureIndex = 0;
-const sizes = [1, 2, 4, 8, 16, 32, 64];
+const sizes = Array.from(Array(options.size).keys()).map(i => Math.pow(2, i));
 const offsets = sizes.map(size => size * size);
 offsets.push(-1);
+const offsetLimit = Math.pow(4, options.size - 1);
 const textures: CanvasRenderingContext2D[][] = [];
 sizes.forEach((size) => {
     textures.push([
@@ -264,7 +274,6 @@ sizes.forEach((size) => {
     ]);
 });
 
-const tileContext = createContext2d(8, 8);
 const coord2csvRow = new Map<string, string[]>();
 
 function shuffled<T>(array: T[]): T[] {
