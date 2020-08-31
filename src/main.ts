@@ -8,6 +8,7 @@ const options = {
     shuffle: url.searchParams.get("shuffle") !== "false",
     show: new Set((url.searchParams.get("show") || "tiles,sprites,items").split(",")),
     tooltip: url.searchParams.get("tooltip") !== "false",
+    authors: new Set((url.searchParams.get("authors") || "").split(",")),
 };
 
 async function parsecsv(text: string): Promise<string[][]> {
@@ -201,7 +202,6 @@ async function load() {
             if (csvRow) {
                 const [title, author, url] = [csvRow[2], csvRow[3], csvRow[4]];
                 tooltip.innerHTML = `<a href="${url}">${title} by ${author}</a>`;
-                console.log('final', tx, ty);
                 break;
             }
         }
@@ -213,9 +213,13 @@ async function load() {
 
     Array.from(index).forEach((csvRow) => fetchQueue.push(csvRow))
         
+    options.authors.delete("");
+    if (options.authors.size > 0)
+        fetchQueue = fetchQueue.filter((csvRow) => options.authors.has(csvRow[3]));
+        
     if (options.shuffle)
         fetchQueue = shuffled(fetchQueue);
-    
+
     loop();
 }
 
