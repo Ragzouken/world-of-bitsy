@@ -8,6 +8,7 @@ const options = {
     size: parseInt(url.searchParams.get("size") || "6", 10),
     shuffle: url.searchParams.get("shuffle") !== "false",
     show: new Set((url.searchParams.get("show") || "tiles,sprites,items").split(",")),
+    tooltip: url.searchParams.get("tooltip") !== "false",
 };
 
 async function parsecsv(text: string): Promise<string[][]> {
@@ -34,6 +35,7 @@ async function load() {
     const renderer = document.getElementById('renderer') as HTMLCanvasElement;
     const rendererContext = renderer.getContext('2d')!;
     const tooltip = document.getElementById('tooltip')!;
+    tooltip.hidden = !options.tooltip;
 
     function onResize() {
         const vh = window.innerHeight / 100;
