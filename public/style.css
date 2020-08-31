@@ -14,6 +14,7 @@ html, body {
     overflow: hidden;
 
     font-family: monospace;
+    font-size: larger;
 
     width: 100vw;
     height: calc(var(--vh, 1vh) * 100);
