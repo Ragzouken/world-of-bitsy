@@ -327,6 +327,7 @@ export class Rendering {
             .filter((palette) => palette.background !== palette.tile);
 
         rooms.forEach((room) => counts.set(room.palette, counts.get(room.palette) || 0 + 1));
+        counts.set("0", counts.get("") || 0); // early bitsies have blank palettes
 
         let max = 0;
         palettes.forEach((palette) => {
