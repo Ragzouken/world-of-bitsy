@@ -276,23 +276,26 @@ export class Rendering {
         this.tiles.push({ csvRow, frames });
     }
 
-    findPalette(world: BitsyWorld): BitsyPalette
-    {
-        if ("0" in world.palettes && this.isPaletteValid(world.palettes["0"])) {
-            return world.palettes["0"];
-        }
-        
-        for (let id in world.palettes) {
-            if (this.isPaletteValid(world.palettes[id])) {
-                return world.palettes[id];
+    findPalette(world: BitsyWorld): BitsyPalette {
+        const counts = new Map<string, number>();
+        let chosen = defaultPalette;
+
+        const rooms = Array.from(Object.values(world.rooms));
+        const palettes = Array.from(Object.values(world.palettes))
+            .filter((palette) => palette.background !== palette.tile);
+
+        rooms.forEach((room) => counts.set(room.palette, counts.get(room.palette) || 0 + 1));
+
+        let max = 0;
+        palettes.forEach((palette) => {
+            const count = counts.get(palette.id) || 0;
+            if (count > max) {
+                max = count;
+                chosen = palette;
             }
-        }
+        });
 
-        return defaultPalette;
-    }
-
-    isPaletteValid(palette: BitsyPalette): boolean {
-        return palette.background != palette.tile;
+        return chosen;
     }
 }
 
