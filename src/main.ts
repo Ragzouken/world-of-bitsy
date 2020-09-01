@@ -1,6 +1,4 @@
 import { BitsyParser, BitsyWorld, BitsyPalette, BitsyObject } from "@bitsy/parser";
-import { withPixels, randomInt } from "./utility";
-import { d2xy } from "./hilbert";
 
 const url = new URL(window.location.href);
 const options = {
@@ -11,6 +9,50 @@ const options = {
     authors: new Set((url.searchParams.get("authors") || "").split(",")),
     expanded: url.searchParams.get("expanded") === "true",
 };
+
+const flipXY = (point: { x: number, y: number }) => ({ x: point.y, y: point.x });
+
+export function distanceToHilbertXY(d: number) {
+    d = Math.floor(d);
+    let curPos = { x: 0, y: 0 };
+    let s = 1;
+    let iter = 0;
+    let size = 0;
+    
+    while (d > 0 || s < size) {
+        let ry = 1 & (d / 2);
+        let rx = 1 & (ry ^ d);
+
+        if (rx == 0) {
+            if (ry == 1) {
+                curPos = {
+                    x: s - 1 - curPos.x,
+                    y: s - 1 - curPos.y
+                };
+            }
+            curPos = flipXY(curPos);
+        }
+
+        curPos = {
+            x: curPos.x + s * rx,
+            y: curPos.y + s * ry
+        };
+
+        s *= 2;
+        d = Math.floor(d / 4);
+        iter = (iter + 1) % 2;
+    }
+
+    return iter === 0 ? flipXY(curPos) : curPos;
+};
+
+const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+function withPixels(context: CanvasRenderingContext2D, action: (pixels: Uint32Array) => void) {
+    const image = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+    action(new Uint32Array(image.data.buffer));
+    context.putImageData(image, 0, 0);
+}
 
 async function parsecsv(text: string): Promise<string[][]> {
     const lines = text.split('\n');
@@ -97,7 +139,7 @@ async function load() {
 
         if (!item) return offset;
 
-        const { x, y } = d2xy(offset);
+        const { x, y } = distanceToHilbertXY(offset);
         coord2csvRow.set(`${x},${y}`, item.csvRow);
 
         frame1.drawImage(item.frames[0].canvas, x * 8, y * 8);
