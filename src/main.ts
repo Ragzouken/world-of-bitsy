@@ -8,6 +8,7 @@ const options = {
     tooltip: url.searchParams.get("tooltip") !== "false",
     authors: new Set((url.searchParams.get("authors") || "").split(",")),
     expanded: url.searchParams.get("expanded") === "true",
+    scroll: url.searchParams.get("scroll") !== "false",
 };
 
 const flipXY = (point: { x: number, y: number }) => ({ x: point.y, y: point.x });
@@ -215,7 +216,7 @@ async function load() {
         const active = textures[textureIndex][frame].canvas;
 
         offsetX = Math.floor(rendererContext.canvas.width / 2.);
-        offsetY = Math.floor(performance.now() / 50.) % (active.height * 4);
+        offsetY = options.scroll ? Math.floor(performance.now() / 50.) % (active.height * 4) : 0;
 
         const matrix = new DOMMatrix();
         matrix.translateSelf(offsetX, offsetY);
