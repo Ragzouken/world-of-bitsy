@@ -9,6 +9,7 @@ const options = {
     show: new Set((url.searchParams.get("show") || "tiles,sprites,items").split(",")),
     tooltip: url.searchParams.get("tooltip") !== "false",
     authors: new Set((url.searchParams.get("authors") || "").split(",")),
+    expanded: url.searchParams.get("expanded") === "true",
 };
 
 async function parsecsv(text: string): Promise<string[][]> {
@@ -46,7 +47,9 @@ async function load() {
 
     let index: string[][] = [];
     
-    const indexGetting = fetch("https://raw.githubusercontent.com/Ragzouken/bitsy-archive/main/index.txt")
+    const dataRoot = options.expanded ? "./archive" : "https://raw.githubusercontent.com/Ragzouken/bitsy-archive/main";
+
+    const indexGetting = fetch(`${dataRoot}/index.txt`)
     .then(res => res.text())
     .then(text => parsecsv(text))
     .then(csv => index = csv);
@@ -54,7 +57,7 @@ async function load() {
     const rendering = new Rendering();
 
     async function fetchWorld(boid: string) {
-        const url = `https://raw.githubusercontent.com/Ragzouken/bitsy-archive/main/${boid}.bitsy.txt`;
+        const url = `${dataRoot}/${boid}.bitsy.txt`;
         return fetch(url).then(res => res.text()).then(text => BitsyParser.parse(text.split("\n")));
     }
 
@@ -207,9 +210,13 @@ async function load() {
         }
     });
 
-    const available = await getAvailability();
-    await Promise.all([indexGetting]);
-    index = index.filter((csvRow) => available.has(csvRow[0]));
+    await indexGetting;
+
+    index.shift(); // remove header row
+    if (!options.expanded) {
+        const available = await getAvailability();
+        index = index.filter((csvRow) => available.has(csvRow[0]));
+    }
 
     Array.from(index).forEach((csvRow) => fetchQueue.push(csvRow))
         
