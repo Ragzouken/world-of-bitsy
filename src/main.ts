@@ -72,6 +72,8 @@ async function getAvailability() {
     return new Set(boids);
 }
 
+interface Entry  { title: string, boid: string, author: string, url?: string };
+
 async function load() {
     const renderer = document.getElementById('renderer') as HTMLCanvasElement;
     const rendererContext = renderer.getContext('2d')!;
@@ -88,14 +90,14 @@ async function load() {
     window.addEventListener('resize', onResize);
     onResize();
 
-    let index: string[][] = [];
+    let index: Entry[] = [];
     
     const dataRoot = options.expanded ? "./archive" : "https://raw.githubusercontent.com/Ragzouken/bitsy-archive/main";
 
-    const indexGetting = fetch(`${dataRoot}/index.txt`)
+    const indexGetting = fetch("https://kool.tools/bitsydb/index.jsonl")
     .then(res => res.text())
-    .then(text => parsecsv(text))
-    .then(csv => index = csv);
+    .then(text => text.trim().split("\n"))
+    .then(lines => lines.forEach(line => index.push(JSON.parse(line))));
 
     const rendering = new Rendering();
 
@@ -104,29 +106,26 @@ async function load() {
         return fetch(url).then(res => res.text()).then(text => BitsyParser.parse(text.split("\n")));
     }
 
-    async function addTileset(boid: string, csvRow: string[]) {
+    async function addBitsy(entry: Entry) {
         try {
-            const world = await fetchWorld(boid);
-            rendering.queueBitsy(world, csvRow);
+            const world = await fetchWorld(entry.boid);
+            rendering.queueBitsy(world, entry);
             return true;
         } catch (e) {
             return false;
         }
     }
 
-    let fetchQueue: string[][] = [];
+    let fetchQueue: Entry[] = [];
     const tried = new Set<string>();
 
     async function loadNext() {
-        const csvRow = fetchQueue.shift();
+        const entry = fetchQueue.shift();
 
-        if (!csvRow) return true;
+        if (!entry) return true;
 
-        const boid = csvRow[0];
-        tried.add(boid);
-
-        const author = csvRow[3].trim();  
-        addTileset(boid, csvRow);
+        tried.add(entry.boid);
+        addBitsy(entry);
       
         return true;
     }
@@ -141,7 +140,7 @@ async function load() {
         if (!item) return offset;
 
         const { x, y } = distanceToHilbertXY(offset);
-        coord2csvRow.set(`${x},${y}`, item.csvRow);
+        coord2entry.set(`${x},${y}`, item.entry);
 
         frame1.drawImage(item.frames[0].canvas, x * 8, y * 8);
         frame2.drawImage(item.frames[1].canvas, x * 8, y * 8);
@@ -244,9 +243,9 @@ async function load() {
             const size = sizes[i];
             const [tx, ty] = [(gx + size * 1000) % size, (gy + size * 1000) % size];
 
-            const csvRow = coord2csvRow.get(`${tx},${ty}`);
-            if (csvRow) {
-                const [title, author, url] = [csvRow[2], csvRow[3], csvRow[4]];
+            const entry = coord2entry.get(`${tx},${ty}`);
+            if (entry) {
+                const { title, author, url } = entry;
                 tooltip.innerHTML = `<a href="${url}">${title} by ${author}</a>`;
                 break;
             }
@@ -258,14 +257,14 @@ async function load() {
     index.shift(); // remove header row
     if (!options.expanded) {
         const available = await getAvailability();
-        index = index.filter((csvRow) => available.has(csvRow[0]));
+        index = index.filter((csvRow) => available.has(csvRow.boid));
     }
 
     Array.from(index).forEach((csvRow) => fetchQueue.push(csvRow))
         
     options.authors.delete("");
     if (options.authors.size > 0)
-        fetchQueue = fetchQueue.filter((csvRow) => options.authors.has(csvRow[3]));
+        fetchQueue = fetchQueue.filter((entry) => options.authors.has(entry.author));
         
     if (options.shuffle)
         fetchQueue = shuffled(fetchQueue);
@@ -276,12 +275,12 @@ async function load() {
 type ObjectEntry = {
     object: BitsyObject,
     palette: BitsyPalette,
-    csvRow: string[],
+    entry: Entry,
 }
 
 type TileEntry = {
     frames: CanvasRenderingContext2D[],
-    csvRow: string[],
+    entry: Entry,
 }
 
 const defaultPalette = new BitsyPalette();
@@ -296,13 +295,13 @@ export class Rendering {
 
     constructor(options: Partial<RenderingOptions> = {}) {}
 
-    queueBitsy(world: BitsyWorld, csvRow: string[]) {
+    queueBitsy(world: BitsyWorld, entry: Entry) {
         const palette = this.findPalette(world);
         const objects: BitsyObject[] = [];
         if (options.show.has('tiles')) objects.push(...Object.values(world.tiles));
         if (options.show.has('sprites')) objects.push(...Object.values(world.sprites));
         if (options.show.has('items')) objects.push(...Object.values(world.items));
-        const entries = objects.map((object) => ({ csvRow, palette, object }));
+        const entries = objects.map((object) => ({ entry, palette, object }));
         this.objects.push(...entries);
     }
 
@@ -310,13 +309,13 @@ export class Rendering {
         const entry = this.objects.shift();
         if (!entry) return;
 
-        const { object, csvRow, palette } = entry;
+        const { object, entry: csvRow, palette } = entry;
         const frames = [
             objectToContext(object, palette, 0), 
             objectToContext(object, palette, 1),
         ];
 
-        this.tiles.push({ csvRow, frames });
+        this.tiles.push({ entry: csvRow, frames });
     }
 
     findPalette(world: BitsyWorld): BitsyPalette {
@@ -363,7 +362,7 @@ sizes.forEach((size) => {
     ]);
 });
 
-const coord2csvRow = new Map<string, string[]>();
+const coord2entry = new Map<string, Entry>();
 
 function shuffled<T>(array: T[]): T[] {
     const result: T[] = [];
