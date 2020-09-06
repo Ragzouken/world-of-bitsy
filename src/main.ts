@@ -254,7 +254,6 @@ async function load() {
 
     await indexGetting;
 
-    index.shift(); // remove header row
     if (!options.expanded) {
         const available = await getAvailability();
         index = index.filter((csvRow) => available.has(csvRow.boid));
